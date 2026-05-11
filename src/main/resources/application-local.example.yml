@@ -1,0 +1,58 @@
+# 本地开发配置模板
+# 使用方法：
+#   1. 复制此文件为 application-local.yml
+#   2. 填入你的真实配置
+#   3. 启动命令改为：mvn spring-boot:run -Dspring-boot.run.profiles=local
+
+spring:
+  datasource:
+    # 如果你的 3306 端口被本机 MySQL 占用，可以在这里修改端口
+    # url: jdbc:mysql://localhost:13306/PaiSmart?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+
+jwt:
+  # 生产环境请替换为强随机字符串（至少 32 位），可用命令生成：
+  # openssl rand -base64 32
+  secret-key: "your-secret-key-here"
+
+deepseek:
+  api:
+    # 支持 DeepSeek API Key 或阿里 DashScope API Key（两者接口兼容）
+    # DeepSeek: https://platform.deepseek.com/
+    # DashScope: https://dashscope.aliyuncs.com/
+    key: "your-api-key-here"
+
+embedding:
+  api:
+    # 推荐使用阿里 DashScope API Key（text-embedding-v4 模型）
+    key: "your-api-key-here"
+
+mineru:
+  api:
+    # MinerU 云端文档解析 API Token，注册后获取：https://mineru.net
+    # 用于高质量 PDF 解析（复杂布局/表格/公式），不填则自动降级到 Tika
+    key: "your-mineru-api-token-here"
+    enabled: true   # 设置为 false 可跳过 MinerU，直接用 Tika
+
+asr:
+  # 视频语音转文字（VideoMind 核心能力：FFmpeg + 阿里云 DashScope Paraformer-v2）
+  # 须满足：
+  #   1. 系统已安装 FFmpeg（https://ffmpeg.org/download.html）
+  #   2. MinIO 必须配置公网可访问地址（minio.publicUrl）供 DashScope 拉取音频
+  #      本地开发可用 ngrok 等工具临时暴露：
+  #        ngrok http 19000 --host-header=rewrite
+  #      （本项目 docker-compose 中 MinIO 映射到 19000；--host-header=rewrite
+  #       让 ngrok 把 Host 改写为 localhost:19000，否则 AWS S3 V4 签名会失败）
+  # enabled 默认 true；仅在本地排障时可临时设为 false（此时无法上传/解析视频）
+  enabled: true
+  api:
+    # 复用项目已有 DashScope Key（通常与 deepseek/embedding 同一把）
+    key: "your-dashscope-api-key-here"
+
+# 当启用 ASR 时，必须设为公网可访问的 MinIO 地址（如 ngrok 域名）
+# minio:
+#   publicUrl: "https://your-ngrok-domain.ngrok-free.dev"
+
+# 如果 ffmpeg 不在系统 PATH 中，可在此指定绝对路径
+# ffmpeg:
+#   path: "C:/ffmpeg/bin/ffmpeg.exe"   # Windows 示例
+#   path: "/usr/local/bin/ffmpeg"       # Linux/macOS 示例
