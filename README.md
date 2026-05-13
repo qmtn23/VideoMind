@@ -191,25 +191,64 @@ pnpm dev
 
 ## 一键启动脚本（Windows）
 
-仓库根目录提供 [`start.ps1`](start.ps1)，自动完成「读取 publicUrl → 检查 Docker → 启动 ngrok → 启动后端 → 启动前端」全流程：
+仓库根目录提供 [`start.ps1`](start.ps1)，在 **Windows PowerShell** 下自动完成以下全流程：
+
+```
+读取 minio.publicUrl → 检查 Docker 容器 → 启动 ngrok → 启动后端 → 启动前端
+```
+
+### 前提条件
+
+在运行脚本前，请确认：
+
+1. **Docker Desktop 已启动**，且 5 个容器（`mysql` / `redis` / `kafka` / `es` / `minio`）均为 `Up` 状态（`docker ps` 验证）。
+2. **`src/main/resources/application-local.yml` 已存在**，并正确填写了 API Key、数据库端口等敏感配置（参考 `application-local.example.yml`）。
+3. **ngrok 已安装**（`ngrok version` 能正常输出），且 `minio.publicUrl` 配置了你的 ngrok 固定域名（视频功能必需；普通文档功能不受影响）。
+
+### 用法
 
 ```powershell
-# 首次需放开脚本执行策略
+# 首次运行：放开当前用户的脚本执行策略
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
-# 一键启动
+# 一键启动（默认 profile=local）
 .\start.ps1
 
-# 指定 profile（默认 local）
+# 指定 Spring profile
 .\start.ps1 -SpringProfile dev
 ```
 
-脚本会：
+脚本执行顺序：
 
-- 从 `application-local.yml` 解析 `minio.publicUrl`，提取 ngrok 域名
-- 检查 5 个 Docker 容器是否都在运行；缺失会提示先 `docker compose up -d`
-- 探测 ngrok 是否已运行，未运行则自动 `ngrok http --url=<域名> 19000`
-- 检查 8081 与 9527 端口；未占用则在新窗口分别启动后端和前端
+| 步骤 | 动作 | 说明 |
+|------|------|------|
+| 0 | 读取 `minio.publicUrl` | 从 `application-local.yml` 解析 ngrok 域名；未配置时跳过 ngrok，打印 WARN |
+| 1 | 检查 Docker 容器 | 检测 mysql / redis / kafka / es / minio 是否均在运行；缺失则询问是否继续 |
+| 2 | 启动 ngrok | 若域名已配置且 ngrok 未运行，自动执行 `ngrok http --url=<域名> 19000`；已运行则跳过 |
+| 3 | 启动后端 | 若 8081 端口空闲，在新 PowerShell 窗口运行 `mvn spring-boot:run`；已占用则跳过 |
+| 4 | 启动前端 | 若 9527 端口空闲，在新 PowerShell 窗口运行 `pnpm dev`；已占用则跳过 |
+
+启动完成后控制台会输出访问地址：
+
+```
+Frontend: http://localhost:9527
+Backend:  http://localhost:8081
+ngrok:    http://127.0.0.1:4040
+Login:    admin / admin123
+```
+
+> 后端和前端在**各自独立的新窗口**中运行，关闭对应窗口即可停止对应服务。
+> Spring Boot 首次启动编译约需 30-60 秒，前端首次运行会自动安装依赖（`pnpm install`），请稍等。
+
+### 常见问题
+
+| 现象 | 原因 | 解决方式 |
+|------|------|----------|
+| 脚本报"无法加载，因为在此系统上禁止运行脚本" | 执行策略限制 | 运行 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
+| `[WARN] Docker 未就绪` | Docker Desktop 未启动 | 启动 Docker Desktop，等待引擎就绪后重试 |
+| `[WARN] 以下容器未运行: kafka, es` | 容器未启动 | 执行 `cd docs; docker compose up -d` 后重试 |
+| `[WARN] 端口 8081 已占用，跳过后端启动` | 上次后端窗口未关闭 | 关闭旧后端窗口或 `Stop-Process -Id <pid> -Force` 后重试 |
+| `[WARN] ngrok 15 秒未就绪` | ngrok 启动慢或账号未授权 | 手动运行 `ngrok http --url=<域名> 19000` 并检查 <http://127.0.0.1:4040> |
 
 ---
 
