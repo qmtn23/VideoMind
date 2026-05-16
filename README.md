@@ -1,4 +1,4 @@
-# VideoMind（如果这个项目对您有帮助，还请点亮下星星）
+# VideoMind
 
 **AI 视频解析与知识库构建平台**
 
@@ -294,3 +294,6 @@ Login:    admin / admin123
 ## License
 
 以仓库根目录 [LICENSE](LICENSE) 文件为准。
+
+如果这个项目对您有帮助，还请给个星星
+
