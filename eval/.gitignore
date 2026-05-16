@@ -1,0 +1,9 @@
+.env
+testset.csv
+testset_*.csv
+report/
+docs/
+__pycache__/
+*.pyc
+.venv/
+venv/

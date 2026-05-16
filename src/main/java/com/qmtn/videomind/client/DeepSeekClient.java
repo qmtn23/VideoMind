@@ -47,7 +47,7 @@ public class DeepSeekClient {
                              Consumer<String> onChunk,
                              Consumer<Throwable> onError) {
         
-        Map<String, Object> request = buildRequest(userMessage, context, history);
+        Map<String, Object> request = buildRequest(userMessage, context, history, true);
         
         webClient.post()
                 .uri("/chat/completions")
@@ -60,19 +60,63 @@ public class DeepSeekClient {
                     onError
                 );
     }
-    
-    private Map<String, Object> buildRequest(String userMessage, 
+
+    /**
+     * 非流式调用 LLM，等待完整回复后一次性返回字符串。
+     * 主要用于离线评估（如 Ragas）等需要同步获取完整答案的场景。
+     *
+     * @param userMessage 用户问题
+     * @param context     检索拼接好的参考上下文
+     * @param history     历史消息（可为空）
+     * @return LLM 生成的完整回答；调用失败抛 RuntimeException
+     */
+    public String getResponse(String userMessage,
+                              String context,
+                              List<Map<String, String>> history) {
+        Map<String, Object> request = buildRequest(userMessage, context, history, false);
+
+        try {
+            String rawJson = webClient.post()
+                    .uri("/chat/completions")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            if (rawJson == null || rawJson.isEmpty()) {
+                throw new RuntimeException("LLM 返回为空");
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode node = mapper.readTree(rawJson);
+            String answer = node.path("choices")
+                    .path(0)
+                    .path("message")
+                    .path("content")
+                    .asText("");
+            logger.info("非流式调用完成，回答长度：{}", answer.length());
+            return answer;
+        } catch (Exception e) {
+            logger.error("非流式调用 LLM 失败：{}", e.getMessage(), e);
+            throw new RuntimeException("非流式调用 LLM 失败: " + e.getMessage(), e);
+        }
+    }
+
+    private Map<String, Object> buildRequest(String userMessage,
                                            String context,
-                                           List<Map<String, String>> history) {
-        logger.info("构建请求，用户消息：{}，上下文长度：{}，历史消息数：{}", 
-                   userMessage, 
-                   context != null ? context.length() : 0, 
-                   history != null ? history.size() : 0);
+                                           List<Map<String, String>> history,
+                                           boolean stream) {
+        logger.info("构建请求，用户消息：{}，上下文长度：{}，历史消息数：{}，流式：{}",
+                   userMessage,
+                   context != null ? context.length() : 0,
+                   history != null ? history.size() : 0,
+                   stream);
         
         Map<String, Object> request = new java.util.HashMap<>();
         request.put("model", model);
         request.put("messages", buildMessages(userMessage, context, history));
-        request.put("stream", true);
+        request.put("stream", stream);
         // 生成参数
         AiProperties.Generation gen = aiProperties.getGeneration();
         if (gen.getTemperature() != null) {

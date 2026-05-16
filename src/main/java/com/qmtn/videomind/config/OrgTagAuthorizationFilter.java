@@ -61,6 +61,7 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
                 path.matches(".*/upload/merge.*") || 
                 path.matches(".*/documents/uploads.*") ||
                 path.matches(".*/search/hybrid.*") ||
+                path.matches(".*/eval/.*") ||
                 path.matches(".*/documents/[a-fA-F0-9]{32}/summary.*") ||
                 (path.matches(".*/documents/[a-fA-F0-9]{32}.*") && "DELETE".equals(request.getMethod()))) {
                 
@@ -77,6 +78,8 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
                     operation = "视频摘要";
                 } else if ("DELETE".equals(request.getMethod()) && path.matches(".*/documents/[a-fA-F0-9]{32}.*")) {
                     operation = "删除文档";
+                } else if (path.contains("/eval/")) {
+                    operation = "RAG 评估";
                 }
                 
                 logger.info("处理{}请求: {}", operation, path);
