@@ -111,6 +111,26 @@ embedding:
     batch-size: 10  # 单次请求最大行数（DashScope限制为10）
     dimension: 2048  # 指定向量维度
 
+# 混合检索增强配置（查询改写 + 双路独立检索 + RRF 融合 + qwen3-rerank 重排）
+search:
+  queryRewrite:
+    enabled: true                # 启用查询同义改写，提升语义检索召回
+    timeoutSeconds: 5            # 改写超时；超时则回退到原 query
+  hybrid:
+    recallMultiplier: 10         # 每路召回 topK * 10 个候选（论文建议 5-10x）
+    rrfTopMultiplier: 3          # RRF 融合后保留 topK * 3 个进入 rerank
+    rrfK: 60                     # RRF 平滑参数，经典默认值
+
+# qwen3-rerank 重排模型（复用 DashScope API Key）
+reranker:
+  enabled: true
+  model: qwen3-rerank
+  api:
+    url: https://dashscope.aliyuncs.com/compatible-api/v1
+    key: ${DASHSCOPE_API_KEY:}
+  timeoutSeconds: 30
+  instruct: "Given a web search query, retrieve relevant passages that answer the query."
+
 mineru:
   api:
     key: ${MINERU_API_KEY:}   # MinerU 云端 API Token（https://mineru.net）
