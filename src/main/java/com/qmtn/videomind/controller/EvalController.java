@@ -84,7 +84,18 @@ public class EvalController {
             String contextStr = buildContextString(searchResults);
 
             long t1 = System.currentTimeMillis();
-            String answer = deepSeekClient.getResponse(request.question(), contextStr, new ArrayList<>());
+            String evalQuestion = """
+                    请严格基于参考片段回答下面的问题。
+                    输出要求：
+                    1. 第一段只用 1 句话直接回答问题。
+                    2. 如需补充依据，最多列 2 条，每条只写一个核心事实。
+                    3. 不要扩展背景、不要加入参考片段外的常识或推断。
+                    4. 不要为了完整而复述无关上下文。
+                    5. 如果参考片段没有明确答案，只回答“暂无相关信息”。
+
+                    问题：
+                    """ + request.question();
+            String answer = deepSeekClient.getResponse(evalQuestion, contextStr, new ArrayList<>());
             long generationTimeMs = System.currentTimeMillis() - t1;
 
             Map<String, Object> data = new HashMap<>();
